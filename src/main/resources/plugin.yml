@@ -1,0 +1,5 @@
+name: TemplateEventGame
+version: 1.0
+main: org.templateEventGame.TemplateEventGame
+api-version: 1.21
+depend: [SimpleEventManager]
