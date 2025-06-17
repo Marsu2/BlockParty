@@ -1,5 +1,15 @@
-name: TemplateEventGame
+name: BoatRace
 version: 1.0
-main: org.templateEventGame.TemplateEventGame
+main: org.boatRaceGame.BoatRaceEvent
 api-version: 1.21
 depend: [SimpleEventManager]
+commands:
+  boatrace:
+    description: Reload BoatRace config
+    usage: /boatrace reload
+    permission: boatrace.admin
+
+permissions:
+  boatrace.admin:
+    description: Autorise l'utilisation de /boatrace reload
+    default: op

@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.simpleeventmanager</groupId>
-    <artifactId>TemplateEventGame</artifactId>
+    <artifactId>BoatRace</artifactId>
     <version>1.0</version>
     <packaging>jar</packaging>
 
-    <name>TemplateEventGame</name>
+    <name>BoatRace</name>
 
     <properties>
         <java.version>21</java.version>
@@ -66,6 +66,7 @@
             <groupId>com.github.Leandre20c</groupId>
             <artifactId>SimpleEventManager</artifactId>
             <version>1.13</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>

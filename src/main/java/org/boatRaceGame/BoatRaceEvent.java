@@ -1,20 +1,23 @@
-package org.templateEventGame;
+package org.boatRaceGame;
 
+import org.boatRaceGame.commands.BoatRaceCommand;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.simpleEventManager.api.EventGame;
-import org.templateEventGame.game.MyMiniGame;
+import org.boatRaceGame.game.MyMiniGame;
 
 import java.util.List;
 
-public class TemplateEventGame extends JavaPlugin implements EventGame {
+public class BoatRaceEvent extends JavaPlugin implements EventGame {
 
     private MyMiniGame game;
 
     @Override
     public void onEnable() {
-        getLogger().info("TemplateEventGame enabled!");
+        saveDefaultConfig();
+        getCommand("boatrace").setExecutor(new BoatRaceCommand(this));
+        getLogger().info("BoatRace enabled!");
     }
 
     @Override
@@ -25,7 +28,10 @@ public class TemplateEventGame extends JavaPlugin implements EventGame {
 
     @Override
     public void stop() {
-        if (game != null) game.stop();
+        if (game != null) {
+            game.stop();
+            game = null;
+        }
     }
 
     @Override
@@ -40,11 +46,11 @@ public class TemplateEventGame extends JavaPlugin implements EventGame {
 
     @Override
     public String getEventName() {
-        return "template";
+        return "BoatRace";
     }
 
     @Override
     public String getEventDescription() {
-        return "template event";
+        return "Prend ton bateau et franchis la ligne d'arrivée avant les autres !";
     }
 }
