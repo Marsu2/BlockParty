@@ -53,4 +53,10 @@ public class BoatRaceEvent extends JavaPlugin implements EventGame {
     public String getEventDescription() {
         return "Prend ton bateau et franchis la ligne d'arrivée avant les autres !";
     }
+    @Override
+    public void Removeplayer(Player player) {
+        if (game != null) {
+            game.removePlayer2(player);
+        }
+    }
 }
