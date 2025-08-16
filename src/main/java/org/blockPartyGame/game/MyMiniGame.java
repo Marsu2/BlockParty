@@ -3,11 +3,12 @@ package org.blockPartyGame.game;
 import org.blockPartyGame.BlockPartyEvent;
 
 import org.bukkit.*;
+import org.bukkit.block.Block;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.simpleEventManager.SimpleEventManager;
 import org.simpleEventManager.utils.EventUtils;
@@ -22,9 +23,8 @@ public class MyMiniGame implements Listener {
     private final BlockPartyEvent plugin;
     private boolean running = false;
 
-    private final List<Player> winners_Deco = new ArrayList<>();
     private final Map<Player, Location> originalLocations = new HashMap<>();
-    private final Map<UUID, UUID> boatOwners = new HashMap<>();
+
 
     public MyMiniGame(List<Player> players, BlockPartyEvent plugin) {
         this.players = new ArrayList<>(players);
@@ -32,20 +32,17 @@ public class MyMiniGame implements Listener {
     }
 
     public void start() {
+        World eventWorld = Bukkit.getWorld("event");
         SimpleEventManager sem = (SimpleEventManager) Bukkit.getPluginManager().getPlugin("SimpleEventManager");
         Location loc = EventUtils.getEventSpawnLocation(sem, plugin.getEventName());
 
         Bukkit.getPluginManager().registerEvents(MyMiniGame.this, plugin);
+
         for (Player player : players) {
             originalLocations.put(player, player.getLocation());
             player.teleport(loc);
-        }
-
-        for (Player player : players) {
             player.getInventory().clear();
-            player.getInventory().addItem(new ItemStack(Material.OAK_BOAT));
         }
-        placeGlassBarrier();
 
         new BukkitRunnable() {
             @Override
@@ -54,71 +51,84 @@ public class MyMiniGame implements Listener {
                     player.sendTitle("§ePrépare-toi...", "§fDépart imminent", 10, 100, 10);
                 }
 
-                // Lance le compte à rebours après 15 secondes
                 new BukkitRunnable() {
-                    int countdown = 5;
-
                     @Override
                     public void run() {
-                        if (countdown > 0) {
-                            for (Player player : players) {
-                                // Jouer le son personnellement
-                                if (countdown <= 3) {
-                                    player.playSound(player.getLocation(), "iamusic:music_disc.mariostart", SoundCategory.MASTER, 1f, 1f);
+                        ConfigurationSection buildsSection = plugin.getConfig().getConfigurationSection("builds");
+                        if (buildsSection == null || buildsSection.getKeys(false).isEmpty()) return;
 
-                                    String animation = switch (countdown) {
-                                        case 3 -> "trois";
-                                        case 2 -> "deux";
-                                        case 1 -> "un";
-                                        default -> null;
-                                    };
+                        List<String> keys = new ArrayList<>(buildsSection.getKeys(false));
+                        String randomKey = keys.get(new Random().nextInt(keys.size()));
+                        ConfigurationSection build = buildsSection.getConfigurationSection(randomKey);
+                        if (build == null) return;
 
-                                    if (animation != null) {
-                                        String animCmd = "iaplaytotemanimation animated_title:" + animation + " " + player.getName();
-                                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), animCmd);
-                                    }
-                                }
-                            }
-                        } else {
-                            for (Player player : players) {
-                                // GO : titre + animation + son
+                        String name = build.getString("name", "Inconnu");
 
-                                player.playSound(player.getLocation(), "iamusic:music_disc.mariostart2", SoundCategory.MASTER, 1f, 1f);
+                        Location c1 = new Location(eventWorld,
+                                build.getConfigurationSection("source_corner1").getInt("x"),
+                                build.getConfigurationSection("source_corner1").getInt("y"),
+                                build.getConfigurationSection("source_corner1").getInt("z"));
 
-                                String animCmd = "iaplaytotemanimation animated_title:go " + player.getName();
-                                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), animCmd);
-                            }
+                        Location c2 = new Location(eventWorld,
+                                build.getConfigurationSection("source_corner2").getInt("x"),
+                                build.getConfigurationSection("source_corner2").getInt("y"),
+                                build.getConfigurationSection("source_corner2").getInt("z"));
 
-                            removeGlassBarrier();
-                            running = true;
-                            startFinishChecker();
-                            cancel();
-                        }
+                        Bukkit.broadcastMessage("§aBuild choisi: §e" + name);
 
-                        countdown--;
+                        cloneAreaWorldEdit(c1, c2, loc);
+
+                        running = true;
                     }
-                }.runTaskTimer(plugin, 15 * 20L, 20L);
-
-                // 15 secondes de délai avant le début du décompte
+                }.runTaskLater(plugin, 15 * 20L);
             }
         }.runTask(plugin);
-
     }
+
 
     public void stop() {
         HandlerList.unregisterAll(this);
         running = false;
 
-        // Téléporter tous les joueurs au spawn du monde starwars
-        World spawnWorld = Bukkit.getWorld("starwars");
+        // Téléporter tous les joueurs au spawn du monde world
+        World spawnWorld = Bukkit.getWorld("world");
         Location defaultSpawn = (spawnWorld != null) ? spawnWorld.getSpawnLocation() : Bukkit.getWorlds().get(0).getSpawnLocation();
 
         for (Player player : players) {
             player.teleport(defaultSpawn);  // ← Téléporte au spawn de starwars
             player.setCollidable(true);
-            plugin.getLogger().info("[BlockParty] " + player.getName() + " téléporté au spawn de starwars");
+            plugin.getLogger().info("[BlockParty] " + player.getName() + " téléporté au spawn de world");
         }
     }
+
+    private void cloneArea(Location c1, Location c2, Location dest) {
+        World world = c1.getWorld();
+        int minX = Math.min(c1.getBlockX(), c2.getBlockX());
+        int minY = Math.min(c1.getBlockY(), c2.getBlockY());
+        int minZ = Math.min(c1.getBlockZ(), c2.getBlockZ());
+        int maxX = Math.max(c1.getBlockX(), c2.getBlockX());
+        int maxY = Math.max(c1.getBlockY(), c2.getBlockY());
+        int maxZ = Math.max(c1.getBlockZ(), c2.getBlockZ());
+
+        int dx = dest.getBlockX();
+        int dy = dest.getBlockY();
+        int dz = dest.getBlockZ();
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    Block source = world.getBlockAt(x, y, z);
+                    Block target = dest.getWorld().getBlockAt(
+                            dx + (x - minX),
+                            dy + (y - minY),
+                            dz + (z - minZ)
+                    );
+                    target.setBlockData(source.getBlockData());
+                }
+            }
+        }
+    }
+
 
 
     public List<Player> getWinners() {
@@ -126,8 +136,8 @@ public class MyMiniGame implements Listener {
     }
 
     public boolean hasWinner() {
-        return winners.size() == players.size() + winners_Deco.size();
-    }
+        return players.isEmpty();
+    } //Si plus de joueur en lice = tous ont fini
 
 
     @EventHandler
@@ -139,11 +149,8 @@ public class MyMiniGame implements Listener {
     }
     public void removePlayer2(Player player) {
         players.remove(player);
+        winners.add(0,player);
 
-        if (winners.contains(player)) {
-            winners_Deco.add(player);
-            player.sendMessage("§aTu resteras dans le classement car tu avais franchi la ligne d'arrivée !");
-        }
 
         World spawnWorld = Bukkit.getWorld("world");
         Location defaultSpawn = (spawnWorld != null) ? spawnWorld.getSpawnLocation() : Bukkit.getWorlds().get(0).getSpawnLocation();
@@ -152,11 +159,5 @@ public class MyMiniGame implements Listener {
         player.teleport(loc);
         player.sendMessage("§cTu as quitté la course.");
     }
-    public void logGameState() {
-        plugin.getLogger().info("[BoatRace] État de la course:");
-        plugin.getLogger().info("- Joueurs actifs: " + players.size());
-        plugin.getLogger().info("- Gagnants connectés: " + winners.size());
-        plugin.getLogger().info("- Gagnants déconnectés: " + winners_Deco.size());
-        plugin.getLogger().info("- Total gagnants: " + (winners.size() + winners_Deco.size()));
-    }
+
 }
