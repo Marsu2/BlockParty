@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.simpleeventmanager</groupId>
-    <artifactId>BoatRace</artifactId>
+    <artifactId>BlockParty</artifactId>
     <version>1.0</version>
     <packaging>jar</packaging>
 
-    <name>BoatRace</name>
+    <name>BlockParty</name>
 
     <properties>
         <java.version>21</java.version>

@@ -1,15 +1,15 @@
-name: BoatRace
+name: BlockParty
 version: 1.0
-main: org.boatRaceGame.BoatRaceEvent
+main: org.BloackPartyGame.BlockPartyEvent
 api-version: 1.21
 depend: [SimpleEventManager]
 commands:
-  boatrace:
-    description: Reload BoatRace config
-    usage: /boatrace reload
-    permission: boatrace.admin
+  blockparty:
+    description: Reload BlockParty config
+    usage: /blockparty reload
+    permission: blockparty.admin
 
 permissions:
-  boatrace.admin:
-    description: Autorise l'utilisation de /boatrace reload
+  blockparty.admin:
+    description: Autorise l'utilisation de /blockparty reload
     default: op

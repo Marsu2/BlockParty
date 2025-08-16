@@ -1,20 +1,2 @@
-boat-race:
-  finish-block: EMERALD_BLOCK
-
-  default-canon-speed: 0.7
-
-  # Particule utilisée pendant la propulsion
-  launch-particle: CLOUD
-
-  cannon-blocks:
-    MAGENTA_GLAZED_TERRACOTTA:
-      offset-x: 0
-      offset-y: 33
-      offset-z: 41
-      speed: 0.9
-    GOLD_BLOCK:
-      offset-x: 0
-      offset-y: 13
-      offset-z: -80
 
 

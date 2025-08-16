@@ -1,23 +1,22 @@
-package org.boatRaceGame;
+package org.blockPartyGame;
 
-import org.boatRaceGame.commands.BoatRaceCommand;
-import org.bukkit.Bukkit;
+import org.blockPartyGame.commands.BlockPartyCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.simpleEventManager.api.EventGame;
-import org.boatRaceGame.game.MyMiniGame;
+import org.blockPartyGame.game.MyMiniGame;
 
 import java.util.List;
 
-public class BoatRaceEvent extends JavaPlugin implements EventGame {
+public class BlockPartyEvent extends JavaPlugin implements EventGame {
 
     private MyMiniGame game;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
-        getCommand("boatrace").setExecutor(new BoatRaceCommand(this));
-        getLogger().info("BoatRace enabled!");
+        getCommand("blockparty").setExecutor(new BlockPartyCommand(this));
+        getLogger().info("BlockParty enabled!");
     }
 
     @Override
@@ -46,12 +45,12 @@ public class BoatRaceEvent extends JavaPlugin implements EventGame {
 
     @Override
     public String getEventName() {
-        return "BoatRace";
+        return "BlockParty";
     }
 
     @Override
     public String getEventDescription() {
-        return "Prend ton bateau et franchis la ligne d'arrivée avant les autres !";
+        return "Tiens-toi sur la bonne couleur et élimine tes adversaires !";
     }
     @Override
     public void Removeplayer(Player player) {
