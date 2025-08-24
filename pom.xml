@@ -74,11 +74,5 @@
             <scope>provided</scope>
         </dependency>
 
-        <dependency>
-            <groupId>com.sk89q.worldedit</groupId>
-            <artifactId>worldedit-bukkit</artifactId>
-            <version>7.3.0</version> <!-- vérifie la version installée -->
-            <scope>provided</scope>
-        </dependency>
     </dependencies>
 </project>

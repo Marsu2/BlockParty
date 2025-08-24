@@ -1,6 +1,6 @@
 name: BlockParty
 version: 1.0
-main: org.BloackPartyGame.BlockPartyEvent
+main: org.blockPartyGame.BlockPartyEvent
 api-version: 1.21
 depend: [SimpleEventManager]
 commands:

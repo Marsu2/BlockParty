@@ -5,7 +5,7 @@
 
 builds:
   build1:
-    world: "world"
+    world: "event"
     name: "Rubiks Cube"
     source_corner1: { x: 100, y: 64, z: 100 }
     source_corner2: { x: 120, y: 64, z: 120 }
@@ -16,7 +16,7 @@ builds:
       - "YELLOW_CONCRETE"
 
   build2:
-    world: "world"
+    world: "event"
     name: "JSPBRO"
     source_corner1: { x: 200, y: 64, z: 200 }
     source_corner2: { x: 220, y: 64, z: 220 }
@@ -27,7 +27,7 @@ builds:
       - "CYAN_CONCRETE"
 
   build3:
-    world: "world"
+    world: "event"
     name: "JSPBRO3"
     source_corner1: { x: 300, y: 64, z: 300 }
     source_corner2: { x: 320, y: 64, z: 320 }
@@ -41,5 +41,12 @@ builds:
 game:
   animation_duration: 2.0  # secondes d'animation de clonage rapide
   clone_speed: 0.2        # intervalle entre chaque clone (en secondes)
-  time_to_choose: 8       # temps pour aller sur la bonne couleur
+  time_to_choose: 8.0       # temps pour aller sur la bonne couleur
   time_between_rounds: 3  # temps entre les rounds
+
+  # Coordonnées où cloner le build choisi
+  clone_destination:
+    world: "event"
+    x: 0
+    y: 64
+    z: 0
