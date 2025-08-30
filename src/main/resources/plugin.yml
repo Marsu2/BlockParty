@@ -2,7 +2,7 @@ name: BlockParty
 version: 1.0
 main: org.blockPartyGame.BlockPartyEvent
 api-version: 1.21
-depend: [SimpleEventManager]
+depend: [SimpleEventManager, WorldEdit]
 commands:
   blockparty:
     description: Reload BlockParty config

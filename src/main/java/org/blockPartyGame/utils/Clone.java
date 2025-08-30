@@ -1,132 +1,132 @@
 package org.blockPartyGame.utils;
 
+import com.sk89q.worldedit.EditSession;
+import com.sk89q.worldedit.WorldEdit;
+import com.sk89q.worldedit.WorldEditException;
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldedit.extent.clipboard.Clipboard;
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat;
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
+import com.sk89q.worldedit.function.operation.Operation;
+import com.sk89q.worldedit.function.operation.Operations;
+import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldedit.regions.CuboidRegion;
+import com.sk89q.worldedit.session.ClipboardHolder;
+import com.sk89q.worldedit.world.World;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.World;
-import org.bukkit.block.Block;
+import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.List;
 
 public class Clone {
 
     /**
-     * Clone une zone d'une position à une autre en utilisant Bukkit pur
+     * Place un schematic à une position donnée
      *
-     * @param c1 Premier coin de la zone source
-     * @param c2 Deuxième coin de la zone source
-     * @param dest Position de destination (coin où coller)
-     * @return true si le clonage a réussi, false sinon
+     * @param schematicName Nom du fichier schematic (sans extension)
+     * @param location Position où placer le schematic
+     * @param plugin Instance du plugin pour accéder aux dossiers
+     * @return true si réussi
      */
-    public static boolean cloneAreaBukkit(Location c1, Location c2, Location dest) {
-        World world = c1.getWorld();
-        if (world == null) {
-            System.err.println("[BlockParty] Clone: Monde null !");
-            return false;
-        }
-
+    public static boolean pasteSchematic(String schematicName, Location location, JavaPlugin plugin) {
         try {
-            // Calculer les dimensions de la zone source
-            int minX = Math.min(c1.getBlockX(), c2.getBlockX());
-            int maxX = Math.max(c1.getBlockX(), c2.getBlockX());
-            int minY = Math.min(c1.getBlockY(), c2.getBlockY());
-            int maxY = Math.max(c1.getBlockY(), c2.getBlockY());
-            int minZ = Math.min(c1.getBlockZ(), c2.getBlockZ());
-            int maxZ = Math.max(c1.getBlockZ(), c2.getBlockZ());
+            World world = BukkitAdapter.adapt(location.getWorld());
 
-            // Position de destination
-            int destX = dest.getBlockX();
-            int destY = dest.getBlockY();
-            int destZ = dest.getBlockZ();
+            // Chemin vers le schematic
+            File schematicsFolder = new File(plugin.getDataFolder(), "schematics");
+            File schematicFile = new File(schematicsFolder, schematicName + ".schem");
 
-            int blocksCloned = 0;
-
-            // Copier bloc par bloc
-            for (int x = minX; x <= maxX; x++) {
-                for (int y = minY; y <= maxY; y++) {
-                    for (int z = minZ; z <= maxZ; z++) {
-                        // Bloc source
-                        Block sourceBlock = world.getBlockAt(x, y, z);
-
-                        // Calculer la position relative et la position de destination
-                        int offsetX = x - minX;
-                        int offsetY = y - minY;
-                        int offsetZ = z - minZ;
-
-                        // Bloc de destination
-                        Block destBlock = world.getBlockAt(
-                                destX + offsetX,
-                                destY + offsetY,
-                                destZ + offsetZ
-                        );
-
-                        // Copier le type de bloc
-                        destBlock.setType(sourceBlock.getType());
-                        destBlock.setBlockData(sourceBlock.getBlockData());
-
-                        blocksCloned++;
-                    }
-                }
+            if (!schematicFile.exists()) {
+                System.err.println("[BlockParty] Schematic introuvable : " + schematicFile.getPath());
+                return false;
             }
 
-            System.out.println("[BlockParty] " + blocksCloned + " blocs clonés de (" +
-                    minX + "," + minY + "," + minZ + ") vers (" + destX + "," + destY + "," + destZ + ")");
+            // Charger le schematic
+            ClipboardFormat format = ClipboardFormats.findByFile(schematicFile);
+            if (format == null) {
+                System.err.println("[BlockParty] Format non reconnu : " + schematicFile.getName());
+                return false;
+            }
 
-            return true;
+            Clipboard clipboard;
+            try (ClipboardReader reader = format.getReader(new FileInputStream(schematicFile))) {
+                clipboard = reader.read();
+            }
 
-        } catch (Exception e) {
-            System.err.println("[BlockParty] Erreur lors du clonage:");
+            // Placer le schematic
+            try (EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(world, -1)) {
+                Operation operation = new ClipboardHolder(clipboard)
+                        .createPaste(editSession)
+                        .to(BlockVector3.at(location.getBlockX(), location.getBlockY(), location.getBlockZ()))
+                        .build();
+
+                Operations.complete(operation);
+                System.out.println("[BlockParty] Schematic " + schematicName + " placé à " +
+                        location.getBlockX() + "," + location.getBlockY() + "," + location.getBlockZ());
+                return true;
+            }
+
+        } catch (IOException | WorldEditException e) {
+            System.err.println("[BlockParty] Erreur placement schematic " + schematicName);
             e.printStackTrace();
             return false;
         }
     }
 
     /**
-     * Remplace des types de blocs spécifiques par de l'air dans une région (version Bukkit pure)
+     * Supprime tous les blocs SAUF un type spécifique dans une zone
      *
      * @param world Le monde
-     * @param pos1 Première coordonnée de la région
-     * @param pos2 Deuxième coordonnée de la région
-     * @param blocksToReplace Liste des matériaux à remplacer
-     * @param keepBlock Le type de bloc à garder (ne pas remplacer)
+     * @param pos1 Premier coin de la zone
+     * @param pos2 Deuxième coin de la zone
+     * @param blocksToReplace Liste des blocs à supprimer
+     * @param keepBlock Type de bloc à garder (ne pas supprimer)
      * @return true si réussi
      */
-    public static boolean replaceBlocksExcept(World world, Location pos1, Location pos2,
+    public static boolean replaceBlocksExcept(org.bukkit.World world, Location pos1, Location pos2,
                                               List<Material> blocksToReplace, Material keepBlock) {
-        if (world == null || pos1 == null || pos2 == null || blocksToReplace == null) {
-            return false;
-        }
-
         try {
-            int minX = Math.min(pos1.getBlockX(), pos2.getBlockX());
-            int maxX = Math.max(pos1.getBlockX(), pos2.getBlockX());
-            int minY = Math.min(pos1.getBlockY(), pos2.getBlockY());
-            int maxY = Math.max(pos1.getBlockY(), pos2.getBlockY());
-            int minZ = Math.min(pos1.getBlockZ(), pos2.getBlockZ());
-            int maxZ = Math.max(pos1.getBlockZ(), pos2.getBlockZ());
+            World weWorld = BukkitAdapter.adapt(world);
 
+            BlockVector3 min = BlockVector3.at(
+                    Math.min(pos1.getBlockX(), pos2.getBlockX()),
+                    Math.min(pos1.getBlockY(), pos2.getBlockY()),
+                    Math.min(pos1.getBlockZ(), pos2.getBlockZ())
+            );
+
+            BlockVector3 max = BlockVector3.at(
+                    Math.max(pos1.getBlockX(), pos2.getBlockX()),
+                    Math.max(pos1.getBlockY(), pos2.getBlockY()),
+                    Math.max(pos1.getBlockZ(), pos2.getBlockZ())
+            );
+
+            CuboidRegion region = new CuboidRegion(weWorld, min, max);
             int blocksReplaced = 0;
 
-            // Parcourir tous les blocs de la région
-            for (int x = minX; x <= maxX; x++) {
-                for (int y = minY; y <= maxY; y++) {
-                    for (int z = minZ; z <= maxZ; z++) {
-                        Block block = world.getBlockAt(x, y, z);
-                        Material type = block.getType();
+            try (EditSession editSession = WorldEdit.getInstance().getEditSessionFactory().getEditSession(weWorld, -1)) {
 
-                        // Si c'est un bloc de couleur mais pas la bonne couleur à garder
-                        if (blocksToReplace.contains(type) && type != keepBlock) {
-                            block.setType(Material.AIR);
-                            blocksReplaced++;
-                        }
+                for (BlockVector3 point : region) {
+                    com.sk89q.worldedit.world.block.BlockState currentBlock = editSession.getBlock(point);
+                    Material currentMaterial = BukkitAdapter.adapt(currentBlock.getBlockType());
+
+                    // Si c'est dans la liste à supprimer ET ce n'est pas le bloc à garder
+                    if (blocksToReplace.contains(currentMaterial) && currentMaterial != keepBlock) {
+                        editSession.setBlock(point, BukkitAdapter.adapt(Material.AIR.createBlockData()));
+                        blocksReplaced++;
                     }
                 }
             }
 
-            System.out.println("[BlockParty] " + blocksReplaced + " blocs remplacés par de l'air. Couleur gardée: " + keepBlock.name());
+            System.out.println("[BlockParty] " + blocksReplaced + " blocs supprimés. Gardé: " + keepBlock.name());
             return true;
 
-        } catch (Exception e) {
-            System.err.println("[BlockParty] Erreur lors du remplacement des blocs:");
+        } catch (WorldEditException e) {
+            System.err.println("[BlockParty] Erreur suppression blocs");
             e.printStackTrace();
             return false;
         }

@@ -1,7 +1,6 @@
 package org.blockPartyGame.game;
 
 import org.blockPartyGame.BlockPartyEvent;
-
 import org.blockPartyGame.utils.Clone;
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -31,10 +30,11 @@ public class MyMiniGame implements Listener {
     private List<Material> currentBuildColors = new ArrayList<>();
     private Material currentTargetColor;
     private int currentRound = 0;
-    private Location buildLocation; // Position où le build a été cloné
+    private Location buildLocation; // Position où le build a été placé
     private BukkitTask gameTask;
     private double currentTimeToChoose = 8.0;
-    private int currentBuildWidth, currentBuildHeight, currentBuildDepth;
+
+    // Plus besoin de constante BUILD_SIZE, on va le lire depuis la config
 
     private final Map<Player, Location> originalLocations = new HashMap<>();
 
@@ -71,26 +71,16 @@ public class MyMiniGame implements Listener {
                         ConfigurationSection buildsSection = plugin.getConfig().getConfigurationSection("builds");
                         if (buildsSection == null || buildsSection.getKeys(false).isEmpty()) return;
 
+                        // Choisir un build aléatoire
                         List<String> keys = new ArrayList<>(buildsSection.getKeys(false));
                         String randomKey = keys.get(new Random().nextInt(keys.size()));
                         ConfigurationSection build = buildsSection.getConfigurationSection(randomKey);
                         if (build == null) return;
 
-                        String name = build.getString("name", "Inconnu");
+                        String buildName = build.getString("name", "Inconnu");
+                        Bukkit.broadcastMessage("§aBuild choisi: §e" + buildName);
 
-                        Location c1 = new Location(eventWorld,
-                                build.getConfigurationSection("source_corner1").getInt("x"),
-                                build.getConfigurationSection("source_corner1").getInt("y"),
-                                build.getConfigurationSection("source_corner1").getInt("z"));
-
-                        Location c2 = new Location(eventWorld,
-                                build.getConfigurationSection("source_corner2").getInt("x"),
-                                build.getConfigurationSection("source_corner2").getInt("y"),
-                                build.getConfigurationSection("source_corner2").getInt("z"));
-
-                        Bukkit.broadcastMessage("§aBuild choisi: §e" + name);
-
-                        // Récupérer les coordonnées de destination depuis la config
+                        // Récupérer les coordonnées de destination fixes depuis la config
                         ConfigurationSection destSection = plugin.getConfig().getConfigurationSection("game.clone_destination");
                         if (destSection == null) {
                             plugin.getLogger().warning("Coordonnées de destination manquantes dans la config !");
@@ -104,29 +94,23 @@ public class MyMiniGame implements Listener {
                             return;
                         }
 
-                        Location cloneDestination = new Location(destWorld,
+                        // Position fixe où tous les schematics sont placés
+                        buildLocation = new Location(destWorld,
                                 destSection.getInt("x"),
                                 destSection.getInt("y"),
                                 destSection.getInt("z"));
 
-                        Clone.cloneAreaBukkit(c1, c2, cloneDestination); //DEST = COIN NORD OUEST
-                        buildLocation = cloneDestination.clone(); // Sauvegarder la position du build
+                        // Placer le schematic avec WorldEdit
+                        boolean success = Clone.pasteSchematic(buildName, buildLocation, plugin);
 
-                        // Calculer et sauvegarder les dimensions du build choisi
-                        int sourceMinX = Math.min(c1.getBlockX(), c2.getBlockX());
-                        int sourceMaxX = Math.max(c1.getBlockX(), c2.getBlockX());
-                        int sourceMinY = Math.min(c1.getBlockY(), c2.getBlockY());
-                        int sourceMaxY = Math.max(c1.getBlockY(), c2.getBlockY());
-                        int sourceMinZ = Math.min(c1.getBlockZ(), c2.getBlockZ());
-                        int sourceMaxZ = Math.max(c1.getBlockZ(), c2.getBlockZ());
+                        if (!success) {
+                            plugin.getLogger().warning("Impossible de placer le schematic: " + buildName);
+                            return;
+                        }
 
-                        currentBuildWidth = sourceMaxX - sourceMinX;
-                        currentBuildHeight = sourceMaxY - sourceMinY;
-                        currentBuildDepth = sourceMaxZ - sourceMinZ;
+                        plugin.getLogger().info("[BlockParty] Schematic " + buildName + " placé avec WorldEdit");
 
-                        plugin.getLogger().info("[BlockParty] Build dimensions: " + currentBuildWidth + "x" + currentBuildHeight + "x" + currentBuildDepth);
-
-// Charger les couleurs de ce build
+                        // Charger les couleurs de ce build
                         currentBuildColors.clear();
                         List<String> colorStrings = build.getStringList("color_blocks");
                         for (String colorString : colorStrings) {
@@ -203,9 +187,8 @@ public class MyMiniGame implements Listener {
         plugin.getLogger().info("[BlockParty] " + player.getName() + " éliminé - Restants: " + alivePlayers.size());
     }
 
-
     /**
-     * Démarre la boucle de jeu après le clonage du build
+     * Démarre la boucle de jeu après le placement du schematic
      */
     private void startGameLoop() {
         if (currentBuildColors.isEmpty()) {
@@ -332,7 +315,7 @@ public class MyMiniGame implements Listener {
     }
 
     /**
-     * Supprime tous les blocs qui ne sont pas de la bonne couleur
+     * Supprime tous les blocs qui ne sont pas de la bonne couleur avec WorldEdit
      */
     private void removeWrongBlocks() {
         if (buildLocation == null) return;
@@ -344,12 +327,14 @@ public class MyMiniGame implements Listener {
             player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
         }
 
-        // Calculer la région du build cloné (basée sur la position)
-        // Utiliser les dimensions exactes du build sauvegardées
-        Location corner1 = buildLocation.clone(); // Coin de départ (Nord-Ouest-Bas)
-        Location corner2 = buildLocation.clone().add(currentBuildWidth, currentBuildHeight, currentBuildDepth);
+        // Lire la taille depuis la config
+        int buildSize = plugin.getConfig().getInt("game.build_size", 30); // Défaut: 30
 
-        // Utiliser notre méthode Bukkit pour faire disparaître tous les mauvais blocs
+        // Définir une zone PLATE autour du build (BlockParty = sol plat)
+        Location corner1 = buildLocation.clone().subtract(buildSize/2, 1, buildSize/2); // 1 bloc en dessous
+        Location corner2 = buildLocation.clone().add(buildSize/2, 3, buildSize/2); // 3 blocs au-dessus (sol plat)
+
+        // Utiliser WorldEdit pour faire disparaître tous les mauvais blocs
         boolean success = Clone.replaceBlocksExcept(
                 buildLocation.getWorld(),
                 corner1,
@@ -361,7 +346,7 @@ public class MyMiniGame implements Listener {
         if (!success) {
             plugin.getLogger().warning("[BlockParty] Erreur lors de la suppression des blocs !");
         } else {
-            plugin.getLogger().info("[BlockParty] Blocs supprimés ! Seuls les blocs " + currentTargetColor.name() + " restent.");
+            plugin.getLogger().info("[BlockParty] Blocs supprimés avec WorldEdit ! Seuls les blocs " + currentTargetColor.name() + " restent.");
         }
     }
 
@@ -438,7 +423,6 @@ public class MyMiniGame implements Listener {
             default -> color.name();
         };
     }
-
 
     public void stop() {
         HandlerList.unregisterAll(this);
